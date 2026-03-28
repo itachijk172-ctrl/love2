@@ -450,282 +450,167 @@ function resizeHeart() {
   HH = hCanvas.height = window.innerHeight;
 }
 
-function easeOutSine(t) {
-  return Math.sin((t * Math.PI) / 2);
-}
-function easeInOutSine(t) {
-  return -(Math.cos(Math.PI * t) - 1) / 2;
+// ── Easing ──
+function easeOut(t) { return 1 - (1-t)*(1-t); }
+
+// ── Heart shape points ──
+function buildHeartPoints(N) {
+  const sc = Math.min(HW, HH) * 0.0030;
+  const cx = HW/2, cy = HH * 0.37;
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i/N) * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * 0.9;
+    pts.push({
+      x: cx + sc*r * 16 * Math.pow(Math.sin(t),3),
+      y: cy - sc*r * (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
+    });
+  }
+  return pts;
 }
 
-// ── Heart parametric points ──
-function heartXY(t, sc, cx, cy) {
+// ── Sample letter pixels ──
+function sampleLetter(letter, cx, cy, step) {
+  const fs  = Math.min(HW * 0.18, HH * 0.14, 110);
+  const off = document.createElement('canvas');
+  off.width  = Math.ceil(fs * 1.6);
+  off.height = Math.ceil(fs * 1.6);
+  const oc  = off.getContext('2d');
+  oc.fillStyle = '#fff';
+  oc.font = `900 ${fs}px Arial, sans-serif`;
+  oc.textAlign = 'center';
+  oc.textBaseline = 'middle';
+  oc.fillText(letter, off.width/2, off.height/2);
+  const data = oc.getImageData(0,0,off.width,off.height).data;
+  const pts  = [];
+  for (let row = 0; row < off.height; row += step)
+    for (let col = 0; col < off.width;  col += step)
+      if (data[(row*off.width+col)*4+3] > 128)
+        pts.push({ x: cx+col-off.width/2, y: cy+row-off.height/2 });
+  return pts;
+}
+
+// ── Dot: simple {x,y,tx,ty,hue,size,delay,spd} ──
+// No class, no physics — just lerp toward target
+let dots = [];        // all dots (heart + letters combined)
+let heartDots = [];   // refs to heart dots for origin picking
+let letterPts  = [];
+let pulseT = 0, animFrame, phase = 'idle', phaseTimer = 0, curLetter = 0;
+const LETTERS = ['T','E','A','M','O'];
+
+function makeDot(x, y, tx, ty, delay) {
   return {
-    x: cx + sc * 16 * Math.pow(Math.sin(t), 3),
-    y: cy - sc * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t))
+    x, y, tx, ty,
+    hue:   315 + Math.random()*40,
+    size:  3 + Math.random()*3,
+    delay: delay|0,
+    spd:   0.06 + Math.random()*0.04,  // lerp speed per frame
+    done:  false
   };
 }
-
-function buildHeartPoints(N) {
-  const sc = Math.min(HW, HH) * 0.0032;
-  const cx = HW / 2, cy = HH * 0.38;
-  const pts = [];
-  // outline — evenly spaced
-  for (let i = 0; i < Math.round(N * 0.55); i++) {
-    pts.push(heartXY((i / Math.round(N * 0.55)) * Math.PI * 2, sc, cx, cy));
-  }
-  // interior fill — random polar sampling inside heart
-  for (let i = 0; i < Math.round(N * 0.45); i++) {
-    const t  = Math.random() * Math.PI * 2;
-    const r  = Math.sqrt(Math.random()) * 0.88;
-    pts.push(heartXY(t, sc * r, cx, cy));
-  }
-  return pts;
-}
-
-// ── Letter pixel sampling ──
-// Returns absolute {x,y} positions for one letter centered at (cx, cy)
-function sampleLetter(letter, cx, cy, step) {
-  const fs  = Math.min(HW * 0.14, HH * 0.11, 88);
-  const pad = Math.ceil(fs * 0.2);
-  const off = document.createElement('canvas');
-  off.width  = Math.ceil(fs * 1.5) + pad * 2;
-  off.height = Math.ceil(fs * 1.4) + pad * 2;
-  const oc = off.getContext('2d');
-  oc.fillStyle = '#fff';
-  oc.font = `900 ${fs}px 'Pacifico', cursive`;
-  oc.textAlign    = 'center';
-  oc.textBaseline = 'middle';
-  oc.fillText(letter, off.width / 2, off.height / 2);
-  const data = oc.getImageData(0, 0, off.width, off.height).data;
-  const pts  = [];
-  const s    = step || 5;
-  for (let row = 0; row < off.height; row += s)
-    for (let col = 0; col < off.width; col += s)
-      if (data[(row * off.width + col) * 4 + 3] > 120)
-        pts.push({ x: cx + col - off.width/2, y: cy + row - off.height/2 });
-  return pts;
-}
-
-// ── Particle — petal that drifts like a sakura leaf ──
-class Particle {
-  constructor(x, y) {
-    this.x = x; this.y = y;
-    this.ox = x; this.oy = y;
-    this.tx = x; this.ty = y;
-
-    // travel state
-    this.t     = 1;   // 0→1 progress toward target
-    this.dur   = 1;
-    this.delay = 0;
-
-    // petal visuals — крупнее на мобиле
-    const mob = (typeof HW !== 'undefined' && HW < 700);
-    this.size  = mob ? Math.random() * 4 + 4 : Math.random() * 3.5 + 2.5;
-    this.hue   = Math.random() * 35 + 315;   // pink-fuchsia
-    this.rot   = Math.random() * Math.PI * 2;
-    this.rotSpd = (Math.random() - 0.5) * 0.04; // gentle tumble
-
-    // drift — active while delay > 0 (falling phase)
-    this.driftX = (Math.random() - 0.5) * 0.6;
-    this.driftY = Math.random() * 0.5 + 0.2;  // slow downward drift
-    this.swayT  = Math.random() * Math.PI * 2;
-    this.swaySpd = Math.random() * 0.018 + 0.008;
-    this.swayAmp = Math.random() * 18 + 8;    // px side-sway while falling
-
-    // idle wobble (once settled)
-    this.wb  = Math.random() * Math.PI * 2;
-    this.ws  = Math.random() * 0.015 + 0.005;
-  }
-
-  moveTo(tx, ty, dur, delay) {
-    this.ox    = this.x;
-    this.oy    = this.y;
-    this.tx    = tx;
-    this.ty    = ty;
-    this.dur   = dur  || 120;
-    this.delay = delay || 0;
-    this.t     = 0;
-  }
-
-  update() {
-    this.rot += this.rotSpd;
-
-    if (this.delay > 0) {
-      // Falling phase — drift like a petal in the wind
-      this.delay--;
-      this.swayT += this.swaySpd;
-      this.x += Math.sin(this.swayT) * this.swayAmp * 0.06 + this.driftX;
-      this.y += this.driftY;
-    } else if (this.t < 1) {
-      // Gliding toward target with smooth sine ease
-      this.t = Math.min(1, this.t + 1 / this.dur);
-      const e = easeInOutSine(this.t);
-      // Add a gentle sway arc while flying to target
-      this.swayT += this.swaySpd * 0.5;
-      const sway = Math.sin(this.swayT) * (1 - this.t) * 12;
-      this.x = this.ox + (this.tx - this.ox) * e + sway;
-      this.y = this.oy + (this.ty - this.oy) * e;
-    } else {
-      // Settled — tiny breathing float
-      this.wb += this.ws;
-      this.x = this.tx + Math.sin(this.wb) * 1.0;
-      this.y = this.ty + Math.cos(this.wb * 0.6) * 1.0;
-    }
-  }
-
-  draw() {
-    const s = this.size * 0.55;
-    hCtx.save();
-    hCtx.translate(this.x, this.y);
-    hCtx.rotate(this.rot);
-    hCtx.fillStyle = `hsl(${this.hue},100%,${62 + Math.sin(this.wb || 0)*8}%)`;
-    // Petal / heart shape
-    hCtx.beginPath();
-    hCtx.moveTo(0, s * 1.1);
-    hCtx.bezierCurveTo(-s*1.7, s*0.3,  -s, -s*1.0,  0, -s*0.3);
-    hCtx.bezierCurveTo( s,     -s*1.0,  s*1.7, s*0.3,  0,  s*1.1);
-    hCtx.closePath();
-    hCtx.fill();
-    hCtx.restore();
-  }
-}
-
-// ── Globals ──
-let heartPool = [];   // permanent heart particles
-let letterPool = [];  // per-letter particle arrays (accumulate, never cleared)
-let heartPts   = [];  // heart target positions
-let letterPts  = [];  // letter target positions [letter][pt]
-let pulseT = 0, animFrame, phase = 'idle', phaseTimer = 0, curLetter = 0;
-
-// "TE AMO" — 5 letters with a space gap between TE and AMO
-const LETTERS = ['T','E','A','M','O'];
 
 function startHeartAnimation() {
   heartActive = true;
   resizeHeart();
   hCanvas.classList.add('visible');
 
-  const isMobile = HW < 700;
-  const N = isMobile ? 150 : 260;
+  const N = HW < 700 ? 120 : 200;
+  const hPts = buildHeartPoints(N);
 
-  heartPts  = buildHeartPoints(N);
-  heartPool = heartPts.map(hp => {
-    const sx = Math.random() * HW;
-    const sy = -20 - Math.random() * HH * 0.3;
-    const p  = new Particle(sx, sy);
-    const fallDelay = Math.random() * 50 | 0;        // короткий стаггер
-    const glideDur  = isMobile ? 55 + Math.random() * 25 | 0
-                                : 80 + Math.random() * 40 | 0;
-    p.moveTo(hp.x, hp.y, glideDur, fallDelay);
-    return p;
+  dots = [];
+  heartDots = hPts.map((hp, i) => {
+    const d = makeDot(
+      HW/2 + (Math.random()-0.5)*HW*0.8,
+      HH/2 + (Math.random()-0.5)*HH*0.8,
+      hp.x, hp.y,
+      i * 0.3           // stagger
+    );
+    dots.push(d);
+    return d;
   });
 
-  letterPool = LETTERS.map(() => []);
+  letterPts  = [];
+  document.fonts.ready.then(buildLetterTargets);
 
-  document.fonts.ready.then(() => {
-    buildLetterTargets();
-  });
-
-  phase = 'gatherHeart';
-  phaseTimer = 0;
-  curLetter  = 0;
+  phase = 'heart'; phaseTimer = 0; curLetter = 0;
   if (animFrame) cancelAnimationFrame(animFrame);
   animateHeart();
 }
 
 function buildLetterTargets() {
-  const isMobile = HW < 700;
-  // Крупнее на мобиле чтобы было видно
-  const fs  = isMobile ? Math.min(HW * 0.17, 96) : Math.min(HW * 0.13, 80);
-  const textY = HH * 0.80;
-  const mc = document.createElement('canvas').getContext('2d');
-  mc.font = `900 ${fs}px 'Pacifico', cursive`;
-  const widths    = LETTERS.map(l => mc.measureText(l).width);
-  const letterGap = fs * 0.10;
-  const wordGap   = fs * 0.40;
-  const totalW    = widths.reduce((a,b)=>a+b,0)
-                  + letterGap * (LETTERS.length - 1)
-                  + wordGap;
-  let sx = HW/2 - totalW/2;
-  // Плотность пикселей: крупнее шаг = меньше частиц = быстрее
-  const density = isMobile ? 7 : 5;
-  letterPts = LETTERS.map((ltr, i) => {
-    const cx = sx + widths[i]/2;
-    sx += widths[i] + letterGap + (i === 1 ? wordGap : 0);
-    return sampleLetter(ltr, cx, textY, density);
+  const fs   = Math.min(HW * 0.18, HH * 0.14, 110);
+  const textY = HH * 0.79;
+  const mc   = document.createElement('canvas').getContext('2d');
+  mc.font = `900 ${fs}px Arial, sans-serif`;
+  const step  = HW < 700 ? 8 : 6;
+  const gap   = fs * 0.12;
+  const wgap  = fs * 0.38;                       // пробел между TE и AMO
+  const ws    = LETTERS.map(l => mc.measureText(l).width);
+  const total = ws.reduce((a,b)=>a+b,0) + gap*(LETTERS.length-1) + wgap;
+  let sx = HW/2 - total/2;
+  letterPts = LETTERS.map((l,i) => {
+    const cx = sx + ws[i]/2;
+    sx += ws[i] + gap + (i===1 ? wgap : 0);
+    return sampleLetter(l, cx, textY, step);
   });
 }
 
-function pickHeartOrigin() {
-  // Return current position of a random heart particle — so letters fly FROM heart
-  if (!heartPool.length) return { x: HW/2, y: HH * 0.38 };
-  return heartPool[Math.random() * heartPool.length | 0];
+function pickOrigin() {
+  const d = heartDots[Math.random()*heartDots.length|0];
+  return d ? {x:d.x, y:d.y} : {x:HW/2, y:HH*0.37};
 }
 
 function spawnLetter(lIdx) {
-  if (!letterPts[lIdx] || !letterPts[lIdx].length) return;
-  const isMobile = HW < 700;
-  const targets = letterPts[lIdx];
-
-  targets.forEach((t, i) => {
-    const origin = pickHeartOrigin();
-    const p = new Particle(origin.x, origin.y);
-    // Небольшой drift от сердца, потом плавно летит к букве
-    const fallDelay = (i * 0.3 + Math.random() * 15) | 0;
-    const glideDur  = isMobile ? 45 + Math.random() * 20 | 0
-                                : 65 + Math.random() * 30 | 0;
-    p.moveTo(t.x, t.y, glideDur, fallDelay);
-    letterPool[lIdx].push(p);
+  if (!letterPts[lIdx]) return;
+  letterPts[lIdx].forEach((t, i) => {
+    const o = pickOrigin();
+    const d = makeDot(o.x, o.y, t.x, t.y, i*0.25);
+    dots.push(d);
   });
 }
 
-function settled(pool) {
-  if (!pool.length) return false;
-  let n = 0;
-  for (const p of pool) if (p.t >= 1) n++;
-  return n / pool.length > 0.85;
+function heartSettled() {
+  let n=0;
+  for (const d of heartDots) if (d.done) n++;
+  return n/heartDots.length > 0.9;
 }
 
 function animateHeart() {
   animFrame = requestAnimationFrame(animateHeart);
-  pulseT   += 0.038;
-  phaseTimer++;
+  pulseT += 0.04; phaseTimer++;
 
-  hCtx.clearRect(0, 0, HW, HH);
+  hCtx.clearRect(0,0,HW,HH);
 
-  // ── Transitions ──
-  if (phase === 'gatherHeart') {
-    if (settled(heartPool) || phaseTimer > 160) {
-      phase = 'holdHeart'; phaseTimer = 0;
-    }
-  } else if (phase === 'holdHeart') {
-    if (phaseTimer > 40) {
-      phase = 'letters'; phaseTimer = 0; curLetter = 0;
-      spawnLetter(0);
-    }
-  } else if (phase === 'letters') {
-    if (curLetter < LETTERS.length - 1) {
-      if (settled(letterPool[curLetter]) || phaseTimer > (curLetter + 1) * 70) {
-        curLetter++;
-        spawnLetter(curLetter);
-      }
-    }
-    // stays in 'letters' forever — all particles remain
+  // transitions
+  if (phase==='heart' && (heartSettled() || phaseTimer>120)) {
+    phase='wait'; phaseTimer=0;
+  } else if (phase==='wait' && phaseTimer>35) {
+    phase='letters'; phaseTimer=0; curLetter=0; spawnLetter(0);
+  } else if (phase==='letters' && curLetter < LETTERS.length-1) {
+    if (phaseTimer > 55) { curLetter++; spawnLetter(curLetter); phaseTimer=0; }
   }
 
-  // ── Draw heart with heartbeat pulse ──
-  const ps = 1 + 0.04 * Math.sin(pulseT * 2.0);
-  const cx = HW/2, cy = HH * 0.38;
-  hCtx.save();
-  hCtx.translate(cx, cy);
-  hCtx.scale(ps, ps);
-  hCtx.translate(-cx, -cy);
-  for (const p of heartPool) { p.update(); p.draw(); }
-  hCtx.restore();
+  // pulse scale (heart center)
+  const ps = 1 + 0.035*Math.sin(pulseT*2);
+  const cx = HW/2, cy = HH*0.37;
 
-  // ── Draw letter particles (accumulate, never cleared) ──
-  for (const pool of letterPool)
-    for (const p of pool) { p.update(); p.draw(); }
+  // update + draw all dots
+  for (const d of dots) {
+    if (d.delay > 0) { d.delay -= 1; continue; }
+    if (!d.done) {
+      d.x += (d.tx - d.x) * d.spd;
+      d.y += (d.ty - d.y) * d.spd;
+      if (Math.abs(d.tx-d.x)<0.5 && Math.abs(d.ty-d.y)<0.5) { d.x=d.tx; d.y=d.ty; d.done=true; }
+    }
+    // apply heart pulse only to heart dots
+    let px = d.x, py = d.y;
+    if (d===heartDots[0] || heartDots.includes(d)) {
+      px = cx + (d.x - cx)*ps;
+      py = cy + (d.y - cy)*ps;
+    }
+    hCtx.fillStyle = `hsl(${d.hue},100%,68%)`;
+    hCtx.fillRect(px - d.size/2, py - d.size/2, d.size, d.size);
+  }
 }
 
 // ══════════════════════════════════════════
