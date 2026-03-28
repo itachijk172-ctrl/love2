@@ -86,9 +86,9 @@
     #heartSvg{
       width:clamp(160px,48vw,280px);
       height:clamp(160px,48vw,280px);
-      filter:drop-shadow(0 0 24px #ff2d78) drop-shadow(0 0 48px #ff006688);
       flex-shrink:0;
       margin-bottom: 8px;
+      position:relative;z-index:2;
     }
 
     /* Canvas для частиц TE AMO */
@@ -214,12 +214,23 @@ const STARS=Array.from({length:80},()=>({
   da:(Math.random()*.007+.002)*(Math.random()<.5?1:-1),
   hue:Math.random()*80+300
 }));
+let glowActive=false, glowX=0, glowY=0;
 function drawBg(){
-  const g=bgX.createRadialGradient(W*.5,H*.45,0,W*.5,H*.5,W*.8);
-  g.addColorStop(0,'#3d1030');
-  g.addColorStop(.5,'#260818');
-  g.addColorStop(1,'#160410');
-  bgX.fillStyle=g;bgX.fillRect(0,0,W,H);
+  // фон
+  bgX.fillStyle='#200818';
+  bgX.fillRect(0,0,W,H);
+
+  // мягкое свечение под сердцем
+  if(glowActive){
+    const r=W*.55;
+    const g=bgX.createRadialGradient(glowX,glowY,0,glowX,glowY,r);
+    g.addColorStop(0,'rgba(255,30,120,0.28)');
+    g.addColorStop(0.35,'rgba(200,10,100,0.14)');
+    g.addColorStop(0.7,'rgba(140,0,80,0.06)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    bgX.fillStyle=g;bgX.fillRect(0,0,W,H);
+  }
+
   for(const s of STARS){
     s.a+=s.da;if(s.a>=1||s.a<=0)s.da*=-1;
     s.x=(s.x+.08)%W;
@@ -489,6 +500,7 @@ function startDotAnimation(){
   // Центр сердца — примерно верхняя треть экрана
   heartCX=DW/2;
   heartCY=DH*.30;
+  glowActive=true; glowX=W/2; glowY=H*.30;
   dC.classList.add('visible');
   dots=[];letterPts=[];
   document.fonts.ready.then(()=>{
