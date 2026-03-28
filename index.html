@@ -455,12 +455,12 @@ function easeOut(t) { return 1 - (1-t)*(1-t); }
 
 // ── Heart shape points ──
 function buildHeartPoints(N) {
-  const sc = Math.min(HW, HH) * 0.0030;
-  const cx = HW/2, cy = HH * 0.37;
+  const sc = Math.min(HW, HH) * 0.0042;  // крупнее
+  const cx = HW/2, cy = HH * 0.36;
   const pts = [];
   for (let i = 0; i < N; i++) {
     const t = (i/N) * Math.PI * 2;
-    const r = Math.sqrt(Math.random()) * 0.9;
+    const r = Math.sqrt(Math.random()) * 0.92;
     pts.push({
       x: cx + sc*r * 16 * Math.pow(Math.sin(t),3),
       y: cy - sc*r * (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
@@ -498,14 +498,15 @@ let letterPts  = [];
 let pulseT = 0, animFrame, phase = 'idle', phaseTimer = 0, curLetter = 0;
 const LETTERS = ['T','E','A','M','O'];
 
-function makeDot(x, y, tx, ty, delay) {
+function makeDot(x, y, tx, ty, delay, isLetter) {
   return {
     x, y, tx, ty,
-    hue:   315 + Math.random()*40,
-    size:  3 + Math.random()*3,
-    delay: delay|0,
-    spd:   0.06 + Math.random()*0.04,  // lerp speed per frame
-    done:  false
+    hue:      315 + Math.random()*40,
+    size:     isLetter ? (5 + Math.random()*3) : (4 + Math.random()*3),
+    delay:    delay|0,
+    spd:      0.07 + Math.random()*0.04,
+    done:     false,
+    isLetter: !!isLetter
   };
 }
 
@@ -514,7 +515,7 @@ function startHeartAnimation() {
   resizeHeart();
   hCanvas.classList.add('visible');
 
-  const N = HW < 700 ? 120 : 200;
+  const N = HW < 700 ? 200 : 300;
   const hPts = buildHeartPoints(N);
 
   dots = [];
@@ -564,7 +565,7 @@ function spawnLetter(lIdx) {
   if (!letterPts[lIdx]) return;
   letterPts[lIdx].forEach((t, i) => {
     const o = pickOrigin();
-    const d = makeDot(o.x, o.y, t.x, t.y, i*0.25);
+    const d = makeDot(o.x, o.y, t.x, t.y, i*0.25, true);
     dots.push(d);
   });
 }
@@ -602,14 +603,16 @@ function animateHeart() {
       d.y += (d.ty - d.y) * d.spd;
       if (Math.abs(d.tx-d.x)<0.5 && Math.abs(d.ty-d.y)<0.5) { d.x=d.tx; d.y=d.ty; d.done=true; }
     }
-    // apply heart pulse only to heart dots
+    // pulse only for heart dots (not letter dots)
     let px = d.x, py = d.y;
-    if (d===heartDots[0] || heartDots.includes(d)) {
+    if (!d.isLetter) {
       px = cx + (d.x - cx)*ps;
       py = cy + (d.y - cy)*ps;
     }
+    hCtx.beginPath();
+    hCtx.arc(px, py, d.size/2, 0, Math.PI*2);
     hCtx.fillStyle = `hsl(${d.hue},100%,68%)`;
-    hCtx.fillRect(px - d.size/2, py - d.size/2, d.size, d.size);
+    hCtx.fill();
   }
 }
 
@@ -628,7 +631,6 @@ function fireYes() {
   setTimeout(() => {
     launchConfetti();
     startHeartAnimation();
-    setTimeout(launchConfetti, 2000);
   }, 500);
 }
 </script>
