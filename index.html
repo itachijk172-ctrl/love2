@@ -1,637 +1,508 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Для тебя ❤️</title>
-  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Pacifico&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Pacifico&display=swap" rel="stylesheet"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-    html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
-      font-family: 'Dancing Script', cursive;
-      background: #1a0030;
-      cursor: none;
+    html,body{
+      width:100%;height:100%;overflow:hidden;
+      background:#150025;
+      font-family:'Dancing Script',cursive;
+      cursor:none;
     }
-    @media (pointer: coarse) {
-      html, body { cursor: auto; }
-      #cursor { display: none; }
-    }
+    @media(pointer:coarse){html,body{cursor:auto}#cursor{display:none}}
 
-    #bgCanvas {
-      position: fixed; inset: 0; z-index: 0;
-      pointer-events: none;
-    }
+    /* ── BG ── */
+    #bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
 
-    /* Главный canvas для частиц-сердечек (экран 2) */
-    #heartCanvas {
-      position: fixed; inset: 0; z-index: 11;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.5s;
-    }
-    #heartCanvas.visible { opacity: 1; }
+    /* ── CURSOR ── */
+    #cursor{position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);font-size:18px;filter:drop-shadow(0 0 6px #ff2d78)}
 
-    #cursor {
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      font-size: 18px;
-      filter: drop-shadow(0 0 6px #ff2d78);
+    /* ── SCREENS ── */
+    .screen{
+      position:fixed;inset:0;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:10;
+      transition:opacity 0.7s ease,transform 0.7s ease;
     }
-
-    .screen {
-      position: fixed; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      z-index: 10;
-      transition: opacity 0.8s ease, transform 0.8s ease;
-    }
-    .screen.hidden {
-      opacity: 0;
-      pointer-events: none;
-      transform: scale(1.06);
-    }
+    .screen.hidden{opacity:0;pointer-events:none;transform:scale(1.05)}
 
     /* ── SCREEN 1 ── */
-    #screen1 { gap: clamp(22px, 5vw, 44px); padding: 20px; }
+    #screen1{gap:clamp(20px,5vw,40px);padding:24px}
 
-    .sparkle-ring {
-      position: relative;
-      display: flex; align-items: center; justify-content: center;
+    .subtitle{
+      font-size:clamp(14px,4vw,20px);color:#ffb3d9;
+      letter-spacing:2px;margin-bottom:8px;
+      text-shadow:0 0 12px #ff2d78aa;text-align:center;
     }
-    .sparkle-ring span {
-      position: absolute;
-      font-size: clamp(16px, 4vw, 26px);
-      animation: orbitSpark linear infinite;
+    #typeText{
+      font-family:'Pacifico',cursive;
+      font-size:clamp(28px,8vw,64px);
+      background:linear-gradient(135deg,#ffd700,#ff2d78,#a020f0,#ff0099);
+      background-size:300% 300%;
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      animation:gradShift 3s ease infinite;
+      filter:drop-shadow(0 0 16px rgba(255,45,120,.6));
+      min-height:1.3em;text-align:center;
     }
+    @keyframes gradShift{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
 
-    .subtitle {
-      font-family: 'Dancing Script', cursive;
-      font-size: clamp(15px, 3.5vw, 22px);
-      color: #ffb3d9;
-      letter-spacing: 2px;
-      margin-bottom: 10px;
-      text-shadow: 0 0 12px #ff2d78aa;
-      text-align: center;
+    .btn-row{display:flex;gap:clamp(16px,5vw,40px);justify-content:center;align-items:center;width:100%}
+    .btn{
+      font-family:Arial,sans-serif;font-weight:900;
+      font-size:clamp(20px,6vw,32px);
+      padding:clamp(16px,4vw,22px) clamp(40px,10vw,72px);
+      border:none;border-radius:100px;cursor:pointer;
+      min-width:130px;min-height:64px;letter-spacing:2px;
+      -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+      flex-shrink:0;user-select:none;-webkit-user-select:none;
+      position:relative;overflow:hidden;
+      transition:transform 0.12s;
     }
-    #typeText {
-      font-family: 'Pacifico', cursive;
-      font-size: clamp(30px, 8vw, 70px);
-      background: linear-gradient(135deg, #ffd700, #ff2d78, #a020f0, #ff0099);
-      background-size: 300% 300%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: gradShift 3s ease infinite;
-      filter: drop-shadow(0 0 18px rgba(255,45,120,0.7));
-      min-height: 1.3em;
-      text-align: center;
+    .btn:active{transform:scale(0.93)}
+    #btnYes{
+      background:linear-gradient(135deg,#ff2d78,#a020f0);color:#fff;
+      box-shadow:0 0 28px #ff2d78bb,0 4px 18px #a020f088,inset 0 1px 0 rgba(255,255,255,.3);
     }
-    @keyframes gradShift {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    #btnNo{
+      background:linear-gradient(135deg,#3a0060,#6a0080);color:#ffb3d9;
+      box-shadow:0 0 16px #a020f066,inset 0 1px 0 rgba(255,255,255,.15);
     }
+    #btnNo.floating{position:fixed}
 
-    .btn-row {
-      display: flex; gap: clamp(20px, 5vw, 44px);
-      justify-content: center; align-items: center;
-      width: 100%;
-    }
-    .btn {
-      font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
-      font-weight: 800;
-      font-size: clamp(22px, 6vw, 36px);
-      padding: clamp(18px, 4.5vw, 26px) clamp(44px, 11vw, 80px);
-      border: none; border-radius: 100px;
-      cursor: pointer; position: relative; overflow: hidden;
-      transition: transform 0.12s, box-shadow 0.12s;
-      min-width: 140px; min-height: 68px;
-      letter-spacing: 2px;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-      flex-shrink: 0;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    .btn:active { transform: scale(0.92); }
-    .btn::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
-      transform: translateX(-100%);
-      transition: transform 0.5s;
-    }
-    .btn:hover::before { transform: translateX(100%); }
-
-    #btnYes {
-      background: linear-gradient(135deg, #ff2d78, #a020f0);
-      color: #fff;
-      box-shadow: 0 0 30px #ff2d78bb, 0 4px 20px #a020f088, inset 0 1px 0 rgba(255,255,255,0.3);
-    }
-    #btnYes:active { transform: scale(0.94); }
-
-    #btnNo {
-      background: linear-gradient(135deg, #3a0060, #6a0080);
-      color: #ffb3d9;
-      box-shadow: 0 0 18px #a020f066, inset 0 1px 0 rgba(255,255,255,0.15);
-      /* stays in flow until first interaction */
-    }
-    #btnNo.floating {
-      position: fixed;
+    .no-msg{
+      font-size:clamp(14px,4vw,20px);color:#ffd700;
+      text-shadow:0 0 10px #ffd700aa;min-height:28px;text-align:center;
     }
 
-    .no-msg {
-      font-family: 'Dancing Script', cursive;
-      font-size: clamp(14px, 3.5vw, 20px);
-      color: #ffd700;
-      text-shadow: 0 0 10px #ffd700aa;
-      min-height: 30px; text-align: center;
-      animation: fadeInMsg 0.4s ease;
+    /* ── SCREEN 2 ── */
+    #screen2{gap:0;padding:20px;justify-content:center;align-items:center}
+
+    /* SVG сердце */
+    #heartSvg{
+      width:clamp(180px,55vw,320px);
+      height:clamp(180px,55vw,320px);
+      animation:heartbeat 1.4s ease-in-out infinite;
+      filter:drop-shadow(0 0 24px #ff2d78) drop-shadow(0 0 48px #ff006688);
+      flex-shrink:0;
     }
-    @keyframes fadeInMsg {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
+    @keyframes heartbeat{
+      0%,100%{transform:scale(1)}
+      15%{transform:scale(1.15)}
+      30%{transform:scale(1)}
+      45%{transform:scale(1.08)}
+      60%{transform:scale(1)}
     }
+
+    /* Canvas для частиц TE AMO */
+    #dotCanvas{
+      position:fixed;inset:0;z-index:11;pointer-events:none;
+      opacity:0;transition:opacity 0.4s;
+    }
+    #dotCanvas.visible{opacity:1}
 
     /* ── FLOATING HEARTS ── */
-    .fheart {
-      position: fixed; pointer-events: none !important; z-index: 5;
-      font-size: var(--fs, 22px);
-      animation: floatUp var(--dur, 6s) linear var(--delay, 0s) infinite;
-      left: var(--left, 50%); bottom: -40px; opacity: 0;
-      filter: drop-shadow(0 0 4px #ff2d78);
+    .fheart{
+      position:fixed;pointer-events:none!important;z-index:5;
+      font-size:var(--fs,20px);
+      animation:floatUp var(--dur,7s) linear var(--delay,0s) infinite;
+      left:var(--left,50%);bottom:-40px;opacity:0;
     }
-    @keyframes floatUp {
-      0%   { opacity: 0;    transform: translateY(0) rotate(0deg) scale(0.8); }
-      10%  { opacity: 0.85; }
-      85%  { opacity: 0.6; }
-      100% { opacity: 0;    transform: translateY(-105vh) rotate(var(--rot,30deg)) scale(1.1); }
+    @keyframes floatUp{
+      0%{opacity:0;transform:translateY(0) rotate(0deg) scale(.8)}
+      10%{opacity:.8}
+      85%{opacity:.5}
+      100%{opacity:0;transform:translateY(-110vh) rotate(var(--rot,20deg)) scale(1.1)}
     }
 
     /* ── CURSOR TRAIL ── */
-    .trail {
-      position: fixed; pointer-events: none; z-index: 9998;
-      font-size: 14px;
-      animation: trailFade 0.7s ease forwards;
-      transform: translate(-50%, -50%);
+    .trail{
+      position:fixed;pointer-events:none;z-index:9998;font-size:13px;
+      animation:trailFade 0.6s ease forwards;transform:translate(-50%,-50%);
     }
-    @keyframes trailFade {
-      0%   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-      100% { opacity: 0; transform: translate(-50%,-100%) scale(0.3); }
+    @keyframes trailFade{
+      0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+      100%{opacity:0;transform:translate(-50%,-110%) scale(.2)}
     }
 
-    /* ── SPARK BURST ── */
-    .spark {
-      position: fixed; pointer-events: none; z-index: 6;
-      font-size: var(--sf, 14px);
-      animation: sparkAnim var(--sd, 1.5s) ease forwards;
-      left: var(--sx, 50%); top: var(--sy, 50%);
+    /* ── SPARK ── */
+    .spark{
+      position:fixed;pointer-events:none;z-index:6;font-size:var(--sf,14px);
+      animation:sparkAnim var(--sd,1.2s) ease forwards;
+      left:var(--sx,50%);top:var(--sy,50%);
     }
-    @keyframes sparkAnim {
-      0%   { opacity: 1; transform: translate(0,0) scale(1); }
-      100% { opacity: 0; transform: translate(var(--tx,0), var(--ty,-60px)) scale(0); }
+    @keyframes sparkAnim{
+      0%{opacity:1;transform:translate(0,0) scale(1)}
+      100%{opacity:0;transform:translate(var(--tx,0),var(--ty,-60px)) scale(0)}
     }
 
-    @keyframes orbitSpark {
-      from { transform: rotate(var(--start,0deg)) translateX(var(--r,60px)) rotate(calc(-1 * var(--start,0deg))); }
-      to   { transform: rotate(calc(var(--start,0deg) + 360deg)) translateX(var(--r,60px)) rotate(calc(-1*(var(--start,0deg)+360deg))); }
+    @keyframes orbitSpark{
+      from{transform:rotate(var(--start,0deg)) translateX(var(--r,60px)) rotate(calc(-1*var(--start,0deg)))}
+      to{transform:rotate(calc(var(--start,0deg)+360deg)) translateX(var(--r,60px)) rotate(calc(-1*(var(--start,0deg)+360deg)))}
     }
+
+    .sparkle-ring{position:relative;display:flex;align-items:center;justify-content:center}
+    .sparkle-ring span{position:absolute;font-size:clamp(14px,4vw,24px);animation:orbitSpark linear infinite}
   </style>
 </head>
 <body>
 
 <canvas id="bgCanvas"></canvas>
-<canvas id="heartCanvas"></canvas>
+<canvas id="dotCanvas"></canvas>
 <div id="cursor">❤️</div>
 
-<!-- Подсказка для TG WebView -->
-<div id="openHint" style="
-  position:fixed; top:12px; left:50%; transform:translateX(-50%);
-  z-index:99999; background:rgba(255,255,255,0.15);
-  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,0.3); border-radius:20px;
-  padding:8px 18px; font-family:sans-serif; font-size:13px;
-  color:#fff; white-space:nowrap; display:none;
-  ">
+<!-- TG hint -->
+<div id="openHint" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:8px 18px;font-family:sans-serif;font-size:13px;color:#fff;white-space:nowrap;display:none">
   Открой в браузере для лучшего опыта ↗
 </div>
 
 <!-- SCREEN 1 -->
 <div id="screen1" class="screen">
-  <div class="sparkle-ring" id="sparkleRing" style="width:1px;height:1px;"></div>
+  <div class="sparkle-ring" id="sparkleRing" style="width:1px;height:1px"></div>
   <div>
     <div class="subtitle">Один важный вопрос...</div>
     <div id="typeText"></div>
   </div>
   <div class="btn-row">
     <button class="btn" id="btnYes" onclick="fireYes()">ДА ❤️</button>
-    <button class="btn" id="btnNo" onclick="handleNo()">НЕТ</button>
+    <button class="btn" id="btnNo"  onclick="handleNo()">НЕТ</button>
   </div>
   <div class="no-msg" id="noMsg"></div>
 </div>
 
+<!-- SCREEN 2 -->
+<div id="screen2" class="screen hidden">
+  <svg id="heartSvg" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="2.5" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- outer glow layer -->
+    <path fill="none" stroke="#ff006680" stroke-width="5"
+      filter="url(#glow)"
+      d="M50 85 C18 65 3 48 3 32 C3 17 14 7 27 7 C35 7 43 12 50 20 C57 12 65 7 73 7 C86 7 97 17 97 32 C97 48 82 65 50 85Z"/>
+    <!-- main outline -->
+    <path fill="none" stroke="url(#sg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+      d="M50 85 C18 65 3 48 3 32 C3 17 14 7 27 7 C35 7 43 12 50 20 C57 12 65 7 73 7 C86 7 97 17 97 32 C97 48 82 65 50 85Z"/>
+    <defs>
+      <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%"   stop-color="#ff9de2"/>
+        <stop offset="50%"  stop-color="#ff2d78"/>
+        <stop offset="100%" stop-color="#c040ff"/>
+      </linearGradient>
+    </defs>
+  </svg>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script>
-// Детект Telegram WebView — показываем подсказку
-if (/Telegram|TelegramBot/i.test(navigator.userAgent) ||
-    window.TelegramWebviewProxy !== undefined) {
-  document.getElementById('openHint').style.display = 'block';
-}
+// ── TG detect ──
+if(/Telegram|TelegramBot/i.test(navigator.userAgent)||window.TelegramWebviewProxy!==undefined)
+  document.getElementById('openHint').style.display='block';
 
-// ══════════════════════════════════════════
-//  BACKGROUND CANVAS
-// ══════════════════════════════════════════
-const bgCanvas = document.getElementById('bgCanvas');
-const bgCtx = bgCanvas.getContext('2d');
-let W, H;
-
-function resizeBg() {
-  W = bgCanvas.width  = window.innerWidth;
-  H = bgCanvas.height = window.innerHeight;
-}
+// ══════════════════════════════════
+// BG CANVAS
+// ══════════════════════════════════
+const bgC=document.getElementById('bgCanvas'),bgX=bgC.getContext('2d');
+let W,H;
+function resizeBg(){W=bgC.width=window.innerWidth;H=bgC.height=window.innerHeight}
 resizeBg();
-window.addEventListener('resize', () => { resizeBg(); if (heartActive) resizeHeart(); });
+window.addEventListener('resize',resizeBg);
 
-const STARS = Array.from({length: 120}, () => ({
-  x: Math.random() * window.innerWidth,
-  y: Math.random() * window.innerHeight,
-  r: Math.random() * 1.8 + 0.4,
-  a: Math.random(),
-  da: (Math.random() * 0.008 + 0.003) * (Math.random() < 0.5 ? 1 : -1),
-  hue: Math.random() * 80 + 300,
+const STARS=Array.from({length:80},()=>({
+  x:Math.random()*2000,y:Math.random()*2000,
+  r:Math.random()*1.6+0.3,a:Math.random(),
+  da:(Math.random()*.007+.002)*(Math.random()<.5?1:-1),
+  hue:Math.random()*80+300
 }));
-
-let hueShift = 0;
-function drawBg() {
-  hueShift = (hueShift + 0.3) % 360;
-  const grad = bgCtx.createLinearGradient(0, 0, W, H);
-  grad.addColorStop(0,   `hsl(${hueShift},90%,12%)`);
-  grad.addColorStop(0.5, `hsl(${(hueShift+60)%360},80%,8%)`);
-  grad.addColorStop(1,   `hsl(${(hueShift+120)%360},85%,14%)`);
-  bgCtx.fillStyle = grad;
-  bgCtx.fillRect(0, 0, W, H);
-  STARS.forEach(s => {
-    s.a += s.da;
-    if (s.a >= 1 || s.a <= 0) s.da *= -1;
-    s.x = (s.x + 0.15) % W;
-    bgCtx.beginPath();
-    bgCtx.arc(s.x, s.y % H, s.r, 0, Math.PI * 2);
-    bgCtx.fillStyle = `hsla(${s.hue},100%,80%,${s.a})`;
-    bgCtx.fill();
-  });
+let hueS=0;
+function drawBg(){
+  hueS=(hueS+.25)%360;
+  const g=bgX.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,`hsl(${hueS},90%,10%)`);
+  g.addColorStop(.5,`hsl(${(hueS+60)%360},80%,7%)`);
+  g.addColorStop(1,`hsl(${(hueS+120)%360},85%,12%)`);
+  bgX.fillStyle=g;bgX.fillRect(0,0,W,H);
+  for(const s of STARS){
+    s.a+=s.da;if(s.a>=1||s.a<=0)s.da*=-1;
+    s.x=(s.x+.12)%W;
+    bgX.beginPath();bgX.arc(s.x,s.y%H,s.r,0,Math.PI*2);
+    bgX.fillStyle=`hsla(${s.hue},100%,80%,${s.a})`;bgX.fill();
+  }
   requestAnimationFrame(drawBg);
 }
 drawBg();
 
-// ══════════════════════════════════════════
-//  CURSOR
-// ══════════════════════════════════════════
-const cursor = document.getElementById('cursor');
-document.addEventListener('mousemove', e => {
-  cursor.style.left = e.clientX + 'px';
-  cursor.style.top  = e.clientY + 'px';
-  spawnTrail(e.clientX, e.clientY);
+// ══════════════════════════════════
+// CURSOR
+// ══════════════════════════════════
+const cur=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{
+  cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';trail(e.clientX,e.clientY);
+});
+let lastT=0;
+function trail(x,y){
+  const now=Date.now();if(now-lastT<80)return;lastT=now;
+  const el=document.createElement('div');el.className='trail';el.textContent='❤';
+  el.style.left=x+'px';el.style.top=y+'px';
+  el.style.color=`hsl(${Math.random()*60+310},100%,65%)`;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),600);
+}
+document.addEventListener('touchmove',e=>{
+  trail(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:true});
+
+// ══════════════════════════════════
+// FLOATING HEARTS
+// ══════════════════════════════════
+const HC=['❤️','💕','💖','💗','💓','💝','🩷'];
+function floatHeart(){
+  const el=document.createElement('div');el.className='fheart';
+  el.style.setProperty('--fs',(Math.random()*16+12)+'px');
+  el.style.setProperty('--left',Math.random()*100+'vw');
+  el.style.setProperty('--dur',(Math.random()*5+6)+'s');
+  el.style.setProperty('--delay',(Math.random()*4)+'s');
+  el.style.setProperty('--rot',(Math.random()*40-20)+'deg');
+  el.textContent=HC[Math.floor(Math.random()*HC.length)];
+  document.body.appendChild(el);
+  const d=(parseFloat(el.style.getPropertyValue('--dur'))+parseFloat(el.style.getPropertyValue('--delay')))*1000+500;
+  setTimeout(()=>el.remove(),d);
+}
+for(let i=0;i<12;i++)floatHeart();
+setInterval(floatHeart,900);
+
+// ══════════════════════════════════
+// SPARKLE RING
+// ══════════════════════════════════
+const ring=document.getElementById('sparkleRing');
+['✨','⭐','💫','🌟','⚡','✨','💖','🌟'].forEach((em,i)=>{
+  const s=document.createElement('span');
+  s.style.setProperty('--start',(i/8*360)+'deg');
+  s.style.setProperty('--r',Math.min(W*.3,130)+'px');
+  s.style.animationDuration=(4+i*.5)+'s';
+  s.textContent=em;ring.appendChild(s);
 });
 
-let lastTrail = 0;
-function spawnTrail(x, y) {
-  const now = Date.now();
-  if (now - lastTrail < 60) return;
-  lastTrail = now;
-  const el = document.createElement('div');
-  el.className = 'trail';
-  el.textContent = '❤';
-  el.style.left = x + 'px';
-  el.style.top  = y + 'px';
-  el.style.color = `hsl(${Math.random()*60+310},100%,65%)`;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 700);
+// ══════════════════════════════════
+// TYPEWRITER
+// ══════════════════════════════════
+function typeWriter(el,txt,spd,cb){
+  let i=0;el.textContent='';
+  const iv=setInterval(()=>{el.textContent+=txt[i++];if(i>=txt.length){clearInterval(iv);cb&&cb();}},spd);
 }
-document.addEventListener('touchmove', e => {
-  spawnTrail(e.touches[0].clientX, e.touches[0].clientY);
-}, { passive: true });
+typeWriter(document.getElementById('typeText'),'Ты меня любишь?',90);
 
-// ══════════════════════════════════════════
-//  FLOATING HEARTS
-// ══════════════════════════════════════════
-const heartChars = ['❤️','💕','💖','💗','💓','💝','💘','💞','🩷'];
-function createFloatingHeart() {
-  const el = document.createElement('div');
-  el.className = 'fheart';
-  el.style.setProperty('--fs',    (Math.random()*20+14)+'px');
-  el.style.setProperty('--left',  Math.random()*100+'vw');
-  el.style.setProperty('--dur',   (Math.random()*6+6)+'s');
-  el.style.setProperty('--delay', (Math.random()*6)+'s');
-  el.style.setProperty('--rot',   (Math.random()*60-30)+'deg');
-  el.textContent = heartChars[Math.floor(Math.random()*heartChars.length)];
-  document.body.appendChild(el);
-  const dur = (parseFloat(el.style.getPropertyValue('--dur'))
-             + parseFloat(el.style.getPropertyValue('--delay'))) * 1000 + 1000;
-  setTimeout(() => el.remove(), dur);
+// ══════════════════════════════════
+// NO BUTTON
+// ══════════════════════════════════
+const btnNo=document.getElementById('btnNo'),noMsg=document.getElementById('noMsg');
+const noMsgs=['Неправильный ответ 🤔','Попробуй ещё раз...','Ты уверена? 🙈','Это явно ошибка 😅','Жми ДА! 💕'];
+let noClicks=0,noPlaced=false;
+function placeNoBtn(){
+  if(!noPlaced){btnNo.classList.add('floating');noPlaced=true;}
+  const bw=btnNo.offsetWidth||130,bh=btnNo.offsetHeight||64,m=12;
+  btnNo.style.left=(Math.random()*(window.innerWidth-bw-m*2)+m)+'px';
+  btnNo.style.top=(Math.random()*(window.innerHeight-bh-m*2)+m)+'px';
+  btnNo.style.right='auto';btnNo.style.bottom='auto';
 }
-for (let i = 0; i < 18; i++) createFloatingHeart();
-setInterval(createFloatingHeart, 700);
-
-// ══════════════════════════════════════════
-//  SPARKLE RING (screen 1)
-// ══════════════════════════════════════════
-const ring = document.getElementById('sparkleRing');
-['✨','⭐','💫','🌟','⚡','✨','💖','🌟'].forEach((em, i) => {
-  const s = document.createElement('span');
-  s.style.setProperty('--start', (i/8*360)+'deg');
-  s.style.setProperty('--r', Math.min(W*0.32,140)+'px');
-  s.style.animationDuration = (4+i*0.5)+'s';
-  s.textContent = em;
-  ring.appendChild(s);
-});
-
-// ══════════════════════════════════════════
-//  TYPEWRITER
-// ══════════════════════════════════════════
-function typeWriter(el, text, speed, cb) {
-  let i = 0; el.textContent = '';
-  const iv = setInterval(() => {
-    el.textContent += text[i++];
-    if (i >= text.length) { clearInterval(iv); cb && cb(); }
-  }, speed);
-}
-typeWriter(document.getElementById('typeText'), 'Ты меня любишь?', 90);
-
-// ══════════════════════════════════════════
-//  NO BUTTON
-// ══════════════════════════════════════════
-const btnNo = document.getElementById('btnNo');
-const noMsg = document.getElementById('noMsg');
-const noMsgs = [
-  'Неправильный ответ 🤔',
-  'Попробуй ещё раз...',
-  'Ты уверена? 🙈',
-  'Это явно ошибка 😅',
-  'Кнопка сломана — жми ДА! 💕',
-];
-let noClicks = 0, btnNoPlaced = false;
-
-function placeNoBtn() {
-  if (!btnNoPlaced) {
-    btnNo.classList.add('floating');
-    btnNoPlaced = true;
-  }
-  const bw = btnNo.offsetWidth  || 130;
-  const bh = btnNo.offsetHeight || 64;
-  const margin = 12;
-  const nx = Math.random() * (window.innerWidth  - bw - margin * 2) + margin;
-  const ny = Math.random() * (window.innerHeight - bh - margin * 2) + margin;
-  btnNo.style.left   = nx + 'px';
-  btnNo.style.top    = ny + 'px';
-  btnNo.style.right  = 'auto';
-  btnNo.style.bottom = 'auto';
-}
-btnNo.addEventListener('mouseenter', placeNoBtn);
-
-function handleNo() {
+btnNo.addEventListener('mouseenter',placeNoBtn);
+function handleNo(){
   placeNoBtn();
-  if (noClicks < noMsgs.length) {
-    noMsg.textContent = ''; void noMsg.offsetWidth;
-    noMsg.textContent = noMsgs[noClicks++];
-    if (noClicks >= noMsgs.length) {
-      btnNo.style.transition = 'opacity 0.5s';
-      btnNo.style.opacity = '0';
-      setTimeout(() => btnNo.style.display = 'none', 500);
+  if(noClicks<noMsgs.length){
+    noMsg.textContent='';void noMsg.offsetWidth;
+    noMsg.textContent=noMsgs[noClicks++];
+    if(noClicks>=noMsgs.length){
+      btnNo.style.transition='opacity .5s';btnNo.style.opacity='0';
+      setTimeout(()=>btnNo.style.display='none',500);
     }
   }
 }
 
-// ══════════════════════════════════════════
-//  SPARK BURST
-// ══════════════════════════════════════════
-function spawnBurstSparks(x, y) {
-  ['✨','💫','⭐','💖','💕','🩷'].forEach((em, i) => {
-    const el = document.createElement('div');
-    el.className = 'spark';
-    const angle = (i / 6) * Math.PI * 2;
-    const dist  = Math.random() * 120 + 60;
-    el.style.setProperty('--sf', (Math.random()*12+10)+'px');
-    el.style.setProperty('--sd', (Math.random()*0.8+0.8)+'s');
-    el.style.setProperty('--sx', x+'px');
-    el.style.setProperty('--sy', y+'px');
-    el.style.setProperty('--tx', (Math.cos(angle)*dist)+'px');
-    el.style.setProperty('--ty', (Math.sin(angle)*dist-40)+'px');
-    el.textContent = em;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1600);
+// ══════════════════════════════════
+// SPARK BURST
+// ══════════════════════════════════
+function spawnSparks(x,y){
+  ['✨','💫','💖','💕','⭐','🩷'].forEach((em,i)=>{
+    const el=document.createElement('div');el.className='spark';
+    const a=(i/6)*Math.PI*2,d=Math.random()*100+50;
+    el.style.setProperty('--sf',(Math.random()*10+10)+'px');
+    el.style.setProperty('--sd',(Math.random()*.6+.7)+'s');
+    el.style.setProperty('--sx',x+'px');el.style.setProperty('--sy',y+'px');
+    el.style.setProperty('--tx',(Math.cos(a)*d)+'px');el.style.setProperty('--ty',(Math.sin(a)*d-30)+'px');
+    el.textContent=em;document.body.appendChild(el);setTimeout(()=>el.remove(),1400);
   });
 }
 
-// ══════════════════════════════════════════
-//  CONFETTI
-// ══════════════════════════════════════════
-function launchConfetti() {
-  const colors = ['#ff2d78','#ff0099','#ffd700','#a020f0','#ff80bf'];
-  // Один короткий burst вместо длинного цикла
-  confetti({ particleCount: 60, angle: 60,  spread: 70, origin: { x: 0, y: 0.6 }, colors });
-  confetti({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.6 }, colors });
+// ══════════════════════════════════
+// CONFETTI
+// ══════════════════════════════════
+function launchConfetti(){
+  const colors=['#ff2d78','#ff0099','#ffd700','#a020f0','#ff80bf'];
+  confetti({particleCount:70,angle:60, spread:70,origin:{x:0,y:.6},colors});
+  confetti({particleCount:70,angle:120,spread:70,origin:{x:1,y:.6},colors});
 }
 
-// ══════════════════════════════════════════
-//  HEART PARTICLE ANIMATION (Screen 2)
-// ══════════════════════════════════════════
-const hCanvas = document.getElementById('heartCanvas');
-const hCtx    = hCanvas.getContext('2d');
-let heartActive = false;
-let HW, HH;
+// ══════════════════════════════════
+// DOT PARTICLES — только для TE AMO
+// ══════════════════════════════════
+const dC=document.getElementById('dotCanvas'),dX=dC.getContext('2d');
+let DW,DH;
+function resizeDot(){DW=dC.width=window.innerWidth;DH=dC.height=window.innerHeight}
+window.addEventListener('resize',resizeDot);
 
-function resizeHeart() {
-  HW = hCanvas.width  = window.innerWidth;
-  HH = hCanvas.height = window.innerHeight;
+// Шаблоны букв: нормализованные координаты [x,y] в диапазоне 0..1 (ширина x высота)
+// x: 0=левый край, 1=правый край; y: 0=верх, 1=низ
+const LETTER_TEMPLATES = {
+  T: [
+    [0,0],[.25,0],[.5,0],[.75,0],[1,0],
+    [.5,.2],[.5,.4],[.5,.6],[.5,.8],[.5,1],
+    [.35,.5],[.65,.5]
+  ],
+  E: [
+    [0,0],[.3,0],[.6,0],[.95,0],
+    [0,.25],[0,.5],[0,.75],[0,1],
+    [.3,.5],[.6,.5],
+    [.3,1],[.6,1],[.95,1]
+  ],
+  A: [
+    [.5,0],
+    [.2,.2],[.8,.2],
+    [0,.5],[1,.5],
+    [.1,.7],[.9,.7],
+    [0,1],[.35,.5],[.65,.5],[1,1],
+    [.25,.85],[.75,.85]
+  ],
+  M: [
+    [0,0],[0,.3],[0,.6],[0,1],
+    [1,0],[1,.3],[1,.6],[1,1],
+    [.25,.25],[.5,.5],[.75,.25],
+    [.15,.1],[.85,.1],[.5,.4]
+  ],
+  O: [
+    [.5,0],[.2,.05],[.8,.05],
+    [0,.3],[1,.3],
+    [0,.6],[1,.6],
+    [0,.5],[1,.5],
+    [.2,.95],[.8,.95],[.5,1],
+    [.1,.15],[.9,.15],[.1,.85],[.9,.85]
+  ]
+};
+
+const LETTERS=['T','E','A','M','O'];
+let dots=[],letterPts=[],dotPhase='idle',dotTimer=0,curLetter=0;
+let heartCX,heartCY;
+
+function buildLetterTargets(){
+  const lw=Math.min(DW*.10,65);  // ширина одной буквы
+  const lh=Math.min(DH*.18,90);  // высота одной буквы
+  const textY=DH*.72;
+  const gap=lw*.35;
+  const wordGap=lw*.7;
+  const totalW=lw*5+gap*4+wordGap;
+  let sx=DW/2-totalW/2;
+  letterPts=LETTERS.map((l,i)=>{
+    const tpl=LETTER_TEMPLATES[l];
+    const cx=sx;
+    sx+=lw+gap+(i===1?wordGap:0);
+    return tpl.map(([nx,ny])=>({
+      x: cx+nx*lw,
+      y: textY-lh/2+ny*lh
+    }));
+  });
 }
 
-// ── Easing ──
-function easeOut(t) { return 1 - (1-t)*(1-t); }
-
-// ── Heart shape points ──
-function buildHeartPoints(N) {
-  const sc = Math.min(HW, HH) * 0.0042;  // крупнее
-  const cx = HW/2, cy = HH * 0.36;
-  const pts = [];
-  for (let i = 0; i < N; i++) {
-    const t = (i/N) * Math.PI * 2;
-    const r = Math.sqrt(Math.random()) * 0.92;
-    pts.push({
-      x: cx + sc*r * 16 * Math.pow(Math.sin(t),3),
-      y: cy - sc*r * (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
+function spawnLetter(idx){
+  if(!letterPts[idx])return;
+  letterPts[idx].forEach((t,i)=>{
+    dots.push({
+      x:heartCX+(Math.random()-.5)*30,
+      y:heartCY+(Math.random()-.5)*30,
+      tx:t.x,ty:t.y,
+      hue:310+Math.random()*50,
+      size:DW<700?9+Math.random()*3:8+Math.random()*3,
+      delay:(i*3)|0,
+      done:false
     });
-  }
-  return pts;
-}
-
-// ── Sample letter pixels ──
-function sampleLetter(letter, cx, cy, step) {
-  const fs  = Math.min(HW * 0.18, HH * 0.14, 110);
-  const off = document.createElement('canvas');
-  off.width  = Math.ceil(fs * 1.6);
-  off.height = Math.ceil(fs * 1.6);
-  const oc  = off.getContext('2d');
-  oc.fillStyle = '#fff';
-  oc.font = `900 ${fs}px Arial, sans-serif`;
-  oc.textAlign = 'center';
-  oc.textBaseline = 'middle';
-  oc.fillText(letter, off.width/2, off.height/2);
-  const data = oc.getImageData(0,0,off.width,off.height).data;
-  const pts  = [];
-  for (let row = 0; row < off.height; row += step)
-    for (let col = 0; col < off.width;  col += step)
-      if (data[(row*off.width+col)*4+3] > 128)
-        pts.push({ x: cx+col-off.width/2, y: cy+row-off.height/2 });
-  return pts;
-}
-
-// ── Dot: simple {x,y,tx,ty,hue,size,delay,spd} ──
-// No class, no physics — just lerp toward target
-let dots = [];        // all dots (heart + letters combined)
-let heartDots = [];   // refs to heart dots for origin picking
-let letterPts  = [];
-let pulseT = 0, animFrame, phase = 'idle', phaseTimer = 0, curLetter = 0;
-const LETTERS = ['T','E','A','M','O'];
-
-function makeDot(x, y, tx, ty, delay, isLetter) {
-  return {
-    x, y, tx, ty,
-    hue:      315 + Math.random()*40,
-    size:     isLetter ? (5 + Math.random()*3) : (4 + Math.random()*3),
-    delay:    delay|0,
-    spd:      0.07 + Math.random()*0.04,
-    done:     false,
-    isLetter: !!isLetter
-  };
-}
-
-function startHeartAnimation() {
-  heartActive = true;
-  resizeHeart();
-  hCanvas.classList.add('visible');
-
-  const N = HW < 700 ? 200 : 300;
-  const hPts = buildHeartPoints(N);
-
-  dots = [];
-  heartDots = hPts.map((hp, i) => {
-    const d = makeDot(
-      HW/2 + (Math.random()-0.5)*HW*0.8,
-      HH/2 + (Math.random()-0.5)*HH*0.8,
-      hp.x, hp.y,
-      i * 0.3           // stagger
-    );
-    dots.push(d);
-    return d;
-  });
-
-  letterPts  = [];
-  document.fonts.ready.then(buildLetterTargets);
-
-  phase = 'heart'; phaseTimer = 0; curLetter = 0;
-  if (animFrame) cancelAnimationFrame(animFrame);
-  animateHeart();
-}
-
-function buildLetterTargets() {
-  const fs   = Math.min(HW * 0.18, HH * 0.14, 110);
-  const textY = HH * 0.79;
-  const mc   = document.createElement('canvas').getContext('2d');
-  mc.font = `900 ${fs}px Arial, sans-serif`;
-  const step  = HW < 700 ? 8 : 6;
-  const gap   = fs * 0.12;
-  const wgap  = fs * 0.38;                       // пробел между TE и AMO
-  const ws    = LETTERS.map(l => mc.measureText(l).width);
-  const total = ws.reduce((a,b)=>a+b,0) + gap*(LETTERS.length-1) + wgap;
-  let sx = HW/2 - total/2;
-  letterPts = LETTERS.map((l,i) => {
-    const cx = sx + ws[i]/2;
-    sx += ws[i] + gap + (i===1 ? wgap : 0);
-    return sampleLetter(l, cx, textY, step);
   });
 }
 
-function pickOrigin() {
-  const d = heartDots[Math.random()*heartDots.length|0];
-  return d ? {x:d.x, y:d.y} : {x:HW/2, y:HH*0.37};
+// Рисует маленькое сердечко (♥)
+function drawHeart(x,y,size,hue){
+  const w=size,h=size;
+  dX.save();
+  dX.translate(x-w/2,y-h/2);
+  dX.fillStyle=`hsl(${hue},100%,68%)`;
+  dX.beginPath();
+  dX.moveTo(w/2, h*.25);
+  // left arc
+  dX.bezierCurveTo(w/2,0,  0,0,  0, h*.375);
+  dX.bezierCurveTo(0, h*.625,  w/2, h*.75,  w/2, h);
+  // right arc
+  dX.bezierCurveTo(w/2, h*.75,  w, h*.625,  w, h*.375);
+  dX.bezierCurveTo(w, 0,  w/2,0,  w/2, h*.25);
+  dX.closePath();
+  dX.fill();
+  dX.restore();
 }
 
-function spawnLetter(lIdx) {
-  if (!letterPts[lIdx]) return;
-  letterPts[lIdx].forEach((t, i) => {
-    const o = pickOrigin();
-    const d = makeDot(o.x, o.y, t.x, t.y, i*0.25, true);
-    dots.push(d);
-  });
-}
+function animateDots(){
+  requestAnimationFrame(animateDots);
+  dotTimer++;
+  dX.clearRect(0,0,DW,DH);
 
-function heartSettled() {
-  let n=0;
-  for (const d of heartDots) if (d.done) n++;
-  return n/heartDots.length > 0.9;
-}
-
-function animateHeart() {
-  animFrame = requestAnimationFrame(animateHeart);
-  pulseT += 0.04; phaseTimer++;
-
-  hCtx.clearRect(0,0,HW,HH);
-
-  // transitions
-  if (phase==='heart' && (heartSettled() || phaseTimer>120)) {
-    phase='wait'; phaseTimer=0;
-  } else if (phase==='wait' && phaseTimer>35) {
-    phase='letters'; phaseTimer=0; curLetter=0; spawnLetter(0);
-  } else if (phase==='letters' && curLetter < LETTERS.length-1) {
-    if (phaseTimer > 55) { curLetter++; spawnLetter(curLetter); phaseTimer=0; }
+  // phase logic
+  if(dotPhase==='wait'&&dotTimer>40){
+    dotPhase='letters';dotTimer=0;curLetter=0;spawnLetter(0);
+  } else if(dotPhase==='letters'&&curLetter<LETTERS.length-1&&dotTimer>60){
+    curLetter++;spawnLetter(curLetter);dotTimer=0;
   }
 
-  // pulse scale (heart center)
-  const ps = 1 + 0.035*Math.sin(pulseT*2);
-  const cx = HW/2, cy = HH*0.37;
-
-  // update + draw all dots
-  for (const d of dots) {
-    if (d.delay > 0) { d.delay -= 1; continue; }
-    if (!d.done) {
-      d.x += (d.tx - d.x) * d.spd;
-      d.y += (d.ty - d.y) * d.spd;
-      if (Math.abs(d.tx-d.x)<0.5 && Math.abs(d.ty-d.y)<0.5) { d.x=d.tx; d.y=d.ty; d.done=true; }
+  // update + draw — маленькие сердечки
+  for(const d of dots){
+    if(d.delay>0){d.delay--;continue;}
+    if(!d.done){
+      d.x+=(d.tx-d.x)*.08;
+      d.y+=(d.ty-d.y)*.08;
+      if(Math.hypot(d.tx-d.x,d.ty-d.y)<.8){d.x=d.tx;d.y=d.ty;d.done=true;}
     }
-    // pulse only for heart dots (not letter dots)
-    let px = d.x, py = d.y;
-    if (!d.isLetter) {
-      px = cx + (d.x - cx)*ps;
-      py = cy + (d.y - cy)*ps;
-    }
-    hCtx.beginPath();
-    hCtx.arc(px, py, d.size/2, 0, Math.PI*2);
-    hCtx.fillStyle = `hsl(${d.hue},100%,68%)`;
-    hCtx.fill();
+    drawHeart(d.x,d.y,d.size,d.hue);
   }
 }
 
-// ══════════════════════════════════════════
-//  YES BUTTON
-// ══════════════════════════════════════════
-const btnYes  = document.getElementById('btnYes');
-const screen1 = document.getElementById('screen1');
+function startDotAnimation(){
+  resizeDot();
+  // Центр сердца — примерно верхняя треть экрана
+  heartCX=DW/2;
+  heartCY=DH*.37;
+  dC.classList.add('visible');
+  dots=[];letterPts=[];
+  document.fonts.ready.then(()=>{
+    buildLetterTargets();
+    dotPhase='wait';dotTimer=0;curLetter=0;
+    animateDots();
+  });
+}
 
-function fireYes() {
-  if (btnYes.disabled) return;
-  btnYes.disabled = true;
-  btnNo.disabled  = true;
-  spawnBurstSparks(W/2, H/2);
+// ══════════════════════════════════
+// YES BUTTON
+// ══════════════════════════════════
+const btnYes=document.getElementById('btnYes'),screen1=document.getElementById('screen1'),screen2=document.getElementById('screen2');
+function fireYes(){
+  if(btnYes.disabled)return;
+  btnYes.disabled=true;btnNo.disabled=true;
+  spawnSparks(W/2,H/2);
   screen1.classList.add('hidden');
-  setTimeout(() => {
+  setTimeout(()=>{
+    screen2.classList.remove('hidden');
     launchConfetti();
-    startHeartAnimation();
-  }, 500);
+    startDotAnimation();
+  },500);
 }
 </script>
 </body>
