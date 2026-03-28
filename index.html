@@ -80,22 +80,15 @@
     }
 
     /* ── SCREEN 2 ── */
-    #screen2{gap:0;padding:20px;justify-content:center;align-items:center}
+    #screen2{gap:0;padding:20px;justify-content:flex-start;align-items:center;padding-top:clamp(40px,10vh,80px)}
 
     /* SVG сердце */
     #heartSvg{
-      width:clamp(180px,55vw,320px);
-      height:clamp(180px,55vw,320px);
-      animation:heartbeat 1.4s ease-in-out infinite;
+      width:clamp(160px,48vw,280px);
+      height:clamp(160px,48vw,280px);
       filter:drop-shadow(0 0 24px #ff2d78) drop-shadow(0 0 48px #ff006688);
       flex-shrink:0;
-    }
-    @keyframes heartbeat{
-      0%,100%{transform:scale(1)}
-      15%{transform:scale(1.15)}
-      30%{transform:scale(1)}
-      45%{transform:scale(1.08)}
-      60%{transform:scale(1)}
+      margin-bottom: 8px;
     }
 
     /* Canvas для частиц TE AMO */
@@ -399,11 +392,11 @@ let dots=[],letterPts=[],dotPhase='idle',dotTimer=0,curLetter=0;
 let heartCX,heartCY;
 
 function buildLetterTargets(){
-  const lw=Math.min(DW*.10,65);  // ширина одной буквы
-  const lh=Math.min(DH*.18,90);  // высота одной буквы
-  const textY=DH*.72;
-  const gap=lw*.35;
-  const wordGap=lw*.7;
+  const lw=Math.min(DW*.075,48);  // ширина одной буквы — меньше чтобы не слипались
+  const lh=Math.min(DH*.13,70);   // высота одной буквы
+  const textY=DH*.82;             // ниже — сердце занимает верх
+  const gap=lw*.55;               // большой зазор между буквами
+  const wordGap=lw*1.1;           // ещё больший зазор между словами
   const totalW=lw*5+gap*4+wordGap;
   let sx=DW/2-totalW/2;
   letterPts=LETTERS.map((l,i)=>{
@@ -425,7 +418,7 @@ function spawnLetter(idx){
       y:heartCY+(Math.random()-.5)*30,
       tx:t.x,ty:t.y,
       hue:310+Math.random()*50,
-      size:DW<700?9+Math.random()*3:8+Math.random()*3,
+      size:DW<700?7+Math.random()*2:6+Math.random()*2,
       delay:(i*3)|0,
       done:false
     });
@@ -479,7 +472,7 @@ function startDotAnimation(){
   resizeDot();
   // Центр сердца — примерно верхняя треть экрана
   heartCX=DW/2;
-  heartCY=DH*.37;
+  heartCY=DH*.30;
   dC.classList.add('visible');
   dots=[];letterPts=[];
   document.fonts.ready.then(()=>{
