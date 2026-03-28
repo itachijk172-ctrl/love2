@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Для тебя ❤️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Pacifico&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Dancing Script', cursive;
+      background: #1a0030;
+      cursor: none;
+    }
+    @media (pointer: coarse) {
+      html, body { cursor: auto; }
+      #cursor { display: none; }
+    }
+
+    #bgCanvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Главный canvas для частиц-сердечек (экран 2) */
+    #heartCanvas {
+      position: fixed; inset: 0; z-index: 11;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    #heartCanvas.visible { opacity: 1; }
+
+    #cursor {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      font-size: 18px;
+      filter: drop-shadow(0 0 6px #ff2d78);
+    }
+
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 10;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(1.06);
+    }
+
+    /* ── SCREEN 1 ── */
+    #screen1 { gap: clamp(22px, 5vw, 44px); padding: 20px; }
+
+    .sparkle-ring {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sparkle-ring span {
+      position: absolute;
+      font-size: clamp(16px, 4vw, 26px);
+      animation: orbitSpark linear infinite;
+    }
+
+    .subtitle {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(15px, 3.5vw, 22px);
+      color: #ffb3d9;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      text-shadow: 0 0 12px #ff2d78aa;
+      text-align: center;
+    }
+    #typeText {
+      font-family: 'Pacifico', cursive;
+      font-size: clamp(30px, 8vw, 70px);
+      background: linear-gradient(135deg, #ffd700, #ff2d78, #a020f0, #ff0099);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradShift 3s ease infinite;
+      filter: drop-shadow(0 0 18px rgba(255,45,120,0.7));
+      min-height: 1.3em;
+      text-align: center;
+    }
+    @keyframes gradShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .btn-row {
+      display: flex; gap: clamp(20px, 5vw, 44px);
+      justify-content: center; align-items: center;
+      width: 100%;
+    }
+    .btn {
+      font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+      font-weight: 800;
+      font-size: clamp(22px, 6vw, 36px);
+      padding: clamp(18px, 4.5vw, 26px) clamp(44px, 11vw, 80px);
+      border: none; border-radius: 100px;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: transform 0.12s, box-shadow 0.12s;
+      min-width: 140px; min-height: 68px;
+      letter-spacing: 2px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      flex-shrink: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .btn:active { transform: scale(0.92); }
+    .btn::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s;
+    }
+    .btn:hover::before { transform: translateX(100%); }
+
+    #btnYes {
+      background: linear-gradient(135deg, #ff2d78, #a020f0);
+      color: #fff;
+      box-shadow: 0 0 30px #ff2d78bb, 0 4px 20px #a020f088, inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    #btnYes:active { transform: scale(0.94); }
+
+    #btnNo {
+      background: linear-gradient(135deg, #3a0060, #6a0080);
+      color: #ffb3d9;
+      box-shadow: 0 0 18px #a020f066, inset 0 1px 0 rgba(255,255,255,0.15);
+      /* stays in flow until first interaction */
+    }
+    #btnNo.floating {
+      position: fixed;
+    }
+
+    .no-msg {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(14px, 3.5vw, 20px);
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd700aa;
+      min-height: 30px; text-align: center;
+      animation: fadeInMsg 0.4s ease;
+    }
+    @keyframes fadeInMsg {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── FLOATING HEARTS ── */
+    .fheart {
+      position: fixed; pointer-events: none !important; z-index: 5;
+      font-size: var(--fs, 22px);
+      animation: floatUp var(--dur, 6s) linear var(--delay, 0s) infinite;
+      left: var(--left, 50%); bottom: -40px; opacity: 0;
+      filter: drop-shadow(0 0 4px #ff2d78);
+    }
+    @keyframes floatUp {
+      0%   { opacity: 0;    transform: translateY(0) rotate(0deg) scale(0.8); }
+      10%  { opacity: 0.85; }
+      85%  { opacity: 0.6; }
+      100% { opacity: 0;    transform: translateY(-105vh) rotate(var(--rot,30deg)) scale(1.1); }
+    }
+
+    /* ── CURSOR TRAIL ── */
+    .trail {
+      position: fixed; pointer-events: none; z-index: 9998;
+      font-size: 14px;
+      animation: trailFade 0.7s ease forwards;
+      transform: translate(-50%, -50%);
+    }
+    @keyframes trailFade {
+      0%   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%,-100%) scale(0.3); }
+    }
+
+    /* ── SPARK BURST ── */
+    .spark {
+      position: fixed; pointer-events: none; z-index: 6;
+      font-size: var(--sf, 14px);
+      animation: sparkAnim var(--sd, 1.5s) ease forwards;
+      left: var(--sx, 50%); top: var(--sy, 50%);
+    }
+    @keyframes sparkAnim {
+      0%   { opacity: 1; transform: translate(0,0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--tx,0), var(--ty,-60px)) scale(0); }
+    }
+
+    @keyframes orbitSpark {
+      from { transform: rotate(var(--start,0deg)) translateX(var(--r,60px)) rotate(calc(-1 * var(--start,0deg))); }
+      to   { transform: rotate(calc(var(--start,0deg) + 360deg)) translateX(var(--r,60px)) rotate(calc(-1*(var(--start,0deg)+360deg))); }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<canvas id="heartCanvas"></canvas>
+<div id="cursor">❤️</div>
+
+<!-- Подсказка для TG WebView -->
+<div id="openHint" style="
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  z-index:99999; background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.3); border-radius:20px;
+  padding:8px 18px; font-family:sans-serif; font-size:13px;
+  color:#fff; white-space:nowrap; display:none;
+  ">
+  Открой в браузере для лучшего опыта ↗
+</div>
+
+<!-- SCREEN 1 -->
+<div id="screen1" class="screen">
+  <div class="sparkle-ring" id="sparkleRing" style="width:1px;height:1px;"></div>
+  <div>
+    <div class="subtitle">Один важный вопрос...</div>
+    <div id="typeText"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="btnYes" onclick="fireYes()">ДА ❤️</button>
+    <button class="btn" id="btnNo" onclick="handleNo()">НЕТ</button>
+  </div>
+  <div class="no-msg" id="noMsg"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<script>
+// Детект Telegram WebView — показываем подсказку
+if (/Telegram|TelegramBot/i.test(navigator.userAgent) ||
+    window.TelegramWebviewProxy !== undefined) {
+  document.getElementById('openHint').style.display = 'block';
+}
+
+// ══════════════════════════════════════════
+//  BACKGROUND CANVAS
+// ══════════════════════════════════════════
+const bgCanvas = document.getElementById('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+let W, H;
+
+function resizeBg() {
+  W = bgCanvas.width  = window.innerWidth;
+  H = bgCanvas.height = window.innerHeight;
+}
+resizeBg();
+window.addEventListener('resize', () => { resizeBg(); if (heartActive) resizeHeart(); });
+
+const STARS = Array.from({length: 120}, () => ({
+  x: Math.random() * window.innerWidth,
+  y: Math.random() * window.innerHeight,
+  r: Math.random() * 1.8 + 0.4,
+  a: Math.random(),
+  da: (Math.random() * 0.008 + 0.003) * (Math.random() < 0.5 ? 1 : -1),
+  hue: Math.random() * 80 + 300,
+}));
+
+let hueShift = 0;
+function drawBg() {
+  hueShift = (hueShift + 0.3) % 360;
+  const grad = bgCtx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0,   `hsl(${hueShift},90%,12%)`);
+  grad.addColorStop(0.5, `hsl(${(hueShift+60)%360},80%,8%)`);
+  grad.addColorStop(1,   `hsl(${(hueShift+120)%360},85%,14%)`);
+  bgCtx.fillStyle = grad;
+  bgCtx.fillRect(0, 0, W, H);
+  STARS.forEach(s => {
+    s.a += s.da;
+    if (s.a >= 1 || s.a <= 0) s.da *= -1;
+    s.x = (s.x + 0.15) % W;
+    bgCtx.beginPath();
+    bgCtx.arc(s.x, s.y % H, s.r, 0, Math.PI * 2);
+    bgCtx.fillStyle = `hsla(${s.hue},100%,80%,${s.a})`;
+    bgCtx.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+//  CURSOR
+// ══════════════════════════════════════════
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top  = e.clientY + 'px';
+  spawnTrail(e.clientX, e.clientY);
+});
+
+let lastTrail = 0;
+function spawnTrail(x, y) {
+  const now = Date.now();
+  if (now - lastTrail < 60) return;
+  lastTrail = now;
+  const el = document.createElement('div');
+  el.className = 'trail';
+  el.textContent = '❤';
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.color = `hsl(${Math.random()*60+310},100%,65%)`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+document.addEventListener('touchmove', e => {
+  spawnTrail(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true });
+
+// ══════════════════════════════════════════
+//  FLOATING HEARTS
+// ══════════════════════════════════════════
+const heartChars = ['❤️','💕','💖','💗','💓','💝','💘','💞','🩷'];
+function createFloatingHeart() {
+  const el = document.createElement('div');
+  el.className = 'fheart';
+  el.style.setProperty('--fs',    (Math.random()*20+14)+'px');
+  el.style.setProperty('--left',  Math.random()*100+'vw');
+  el.style.setProperty('--dur',   (Math.random()*6+6)+'s');
+  el.style.setProperty('--delay', (Math.random()*6)+'s');
+  el.style.setProperty('--rot',   (Math.random()*60-30)+'deg');
+  el.textContent = heartChars[Math.floor(Math.random()*heartChars.length)];
+  document.body.appendChild(el);
+  const dur = (parseFloat(el.style.getPropertyValue('--dur'))
+             + parseFloat(el.style.getPropertyValue('--delay'))) * 1000 + 1000;
+  setTimeout(() => el.remove(), dur);
+}
+for (let i = 0; i < 18; i++) createFloatingHeart();
+setInterval(createFloatingHeart, 700);
+
+// ══════════════════════════════════════════
+//  SPARKLE RING (screen 1)
+// ══════════════════════════════════════════
+const ring = document.getElementById('sparkleRing');
+['✨','⭐','💫','🌟','⚡','✨','💖','🌟'].forEach((em, i) => {
+  const s = document.createElement('span');
+  s.style.setProperty('--start', (i/8*360)+'deg');
+  s.style.setProperty('--r', Math.min(W*0.32,140)+'px');
+  s.style.animationDuration = (4+i*0.5)+'s';
+  s.textContent = em;
+  ring.appendChild(s);
+});
+
+// ══════════════════════════════════════════
+//  TYPEWRITER
+// ══════════════════════════════════════════
+function typeWriter(el, text, speed, cb) {
+  let i = 0; el.textContent = '';
+  const iv = setInterval(() => {
+    el.textContent += text[i++];
+    if (i >= text.length) { clearInterval(iv); cb && cb(); }
+  }, speed);
+}
+typeWriter(document.getElementById('typeText'), 'Ты меня любишь?', 90);
+
+// ══════════════════════════════════════════
+//  NO BUTTON
+// ══════════════════════════════════════════
+const btnNo = document.getElementById('btnNo');
+const noMsg = document.getElementById('noMsg');
+const noMsgs = [
+  'Неправильный ответ 🤔',
+  'Попробуй ещё раз...',
+  'Ты уверена? 🙈',
+  'Это явно ошибка 😅',
+  'Кнопка сломана — жми ДА! 💕',
+];
+let noClicks = 0, btnNoPlaced = false;
+
+function placeNoBtn() {
+  if (!btnNoPlaced) {
+    btnNo.classList.add('floating');
+    btnNoPlaced = true;
+  }
+  const bw = btnNo.offsetWidth  || 130;
+  const bh = btnNo.offsetHeight || 64;
+  const margin = 12;
+  const nx = Math.random() * (window.innerWidth  - bw - margin * 2) + margin;
+  const ny = Math.random() * (window.innerHeight - bh - margin * 2) + margin;
+  btnNo.style.left   = nx + 'px';
+  btnNo.style.top    = ny + 'px';
+  btnNo.style.right  = 'auto';
+  btnNo.style.bottom = 'auto';
+}
+btnNo.addEventListener('mouseenter', placeNoBtn);
+
+function handleNo() {
+  placeNoBtn();
+  if (noClicks < noMsgs.length) {
+    noMsg.textContent = ''; void noMsg.offsetWidth;
+    noMsg.textContent = noMsgs[noClicks++];
+    if (noClicks >= noMsgs.length) {
+      btnNo.style.transition = 'opacity 0.5s';
+      btnNo.style.opacity = '0';
+      setTimeout(() => btnNo.style.display = 'none', 500);
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+//  SPARK BURST
+// ══════════════════════════════════════════
+function spawnBurstSparks(x, y) {
+  ['✨','💫','⭐','💖','💕','🩷'].forEach((em, i) => {
+    const el = document.createElement('div');
+    el.className = 'spark';
+    const angle = (i / 6) * Math.PI * 2;
+    const dist  = Math.random() * 120 + 60;
+    el.style.setProperty('--sf', (Math.random()*12+10)+'px');
+    el.style.setProperty('--sd', (Math.random()*0.8+0.8)+'s');
+    el.style.setProperty('--sx', x+'px');
+    el.style.setProperty('--sy', y+'px');
+    el.style.setProperty('--tx', (Math.cos(angle)*dist)+'px');
+    el.style.setProperty('--ty', (Math.sin(angle)*dist-40)+'px');
+    el.textContent = em;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1600);
+  });
+}
+
+// ══════════════════════════════════════════
+//  CONFETTI
+// ══════════════════════════════════════════
+function launchConfetti() {
+  const colors = ['#ff2d78','#ff0099','#ffd700','#a020f0','#ff80bf'];
+  const end = Date.now() + 2500;
+  (function frame() {
+    confetti({ particleCount: 6, angle: 60,  spread: 65, origin: { x: 0 }, colors });
+    confetti({ particleCount: 6, angle: 120, spread: 65, origin: { x: 1 }, colors });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+// ══════════════════════════════════════════
+//  HEART PARTICLE ANIMATION (Screen 2)
+// ══════════════════════════════════════════
+const hCanvas = document.getElementById('heartCanvas');
+const hCtx    = hCanvas.getContext('2d');
+let heartActive = false;
+let HW, HH;
+
+function resizeHeart() {
+  HW = hCanvas.width  = window.innerWidth;
+  HH = hCanvas.height = window.innerHeight;
+}
+
+function easeOutSine(t) {
+  return Math.sin((t * Math.PI) / 2);
+}
+function easeInOutSine(t) {
+  return -(Math.cos(Math.PI * t) - 1) / 2;
+}
+
+// ── Heart parametric points ──
+function heartXY(t, sc, cx, cy) {
+  return {
+    x: cx + sc * 16 * Math.pow(Math.sin(t), 3),
+    y: cy - sc * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t))
+  };
+}
+
+function buildHeartPoints(N) {
+  const sc = Math.min(HW, HH) * 0.0032;
+  const cx = HW / 2, cy = HH * 0.38;
+  const pts = [];
+  // outline — evenly spaced
+  for (let i = 0; i < Math.round(N * 0.55); i++) {
+    pts.push(heartXY((i / Math.round(N * 0.55)) * Math.PI * 2, sc, cx, cy));
+  }
+  // interior fill — random polar sampling inside heart
+  for (let i = 0; i < Math.round(N * 0.45); i++) {
+    const t  = Math.random() * Math.PI * 2;
+    const r  = Math.sqrt(Math.random()) * 0.88;
+    pts.push(heartXY(t, sc * r, cx, cy));
+  }
+  return pts;
+}
+
+// ── Letter pixel sampling ──
+// Returns absolute {x,y} positions for one letter centered at (cx, cy)
+function sampleLetter(letter, cx, cy, step) {
+  const fs  = Math.min(HW * 0.14, HH * 0.11, 88);
+  const pad = Math.ceil(fs * 0.2);
+  const off = document.createElement('canvas');
+  off.width  = Math.ceil(fs * 1.5) + pad * 2;
+  off.height = Math.ceil(fs * 1.4) + pad * 2;
+  const oc = off.getContext('2d');
+  oc.fillStyle = '#fff';
+  oc.font = `900 ${fs}px 'Pacifico', cursive`;
+  oc.textAlign    = 'center';
+  oc.textBaseline = 'middle';
+  oc.fillText(letter, off.width / 2, off.height / 2);
+  const data = oc.getImageData(0, 0, off.width, off.height).data;
+  const pts  = [];
+  const s    = step || 5;
+  for (let row = 0; row < off.height; row += s)
+    for (let col = 0; col < off.width; col += s)
+      if (data[(row * off.width + col) * 4 + 3] > 120)
+        pts.push({ x: cx + col - off.width/2, y: cy + row - off.height/2 });
+  return pts;
+}
+
+// ── Particle — petal that drifts like a sakura leaf ──
+class Particle {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.ox = x; this.oy = y;
+    this.tx = x; this.ty = y;
+
+    // travel state
+    this.t     = 1;   // 0→1 progress toward target
+    this.dur   = 1;
+    this.delay = 0;
+
+    // petal visuals
+    this.size  = Math.random() * 3.5 + 2.5;
+    this.hue   = Math.random() * 35 + 315;   // pink-fuchsia
+    this.rot   = Math.random() * Math.PI * 2;
+    this.rotSpd = (Math.random() - 0.5) * 0.04; // gentle tumble
+
+    // drift — active while delay > 0 (falling phase)
+    this.driftX = (Math.random() - 0.5) * 0.6;
+    this.driftY = Math.random() * 0.5 + 0.2;  // slow downward drift
+    this.swayT  = Math.random() * Math.PI * 2;
+    this.swaySpd = Math.random() * 0.018 + 0.008;
+    this.swayAmp = Math.random() * 18 + 8;    // px side-sway while falling
+
+    // idle wobble (once settled)
+    this.wb  = Math.random() * Math.PI * 2;
+    this.ws  = Math.random() * 0.015 + 0.005;
+  }
+
+  moveTo(tx, ty, dur, delay) {
+    this.ox    = this.x;
+    this.oy    = this.y;
+    this.tx    = tx;
+    this.ty    = ty;
+    this.dur   = dur  || 120;
+    this.delay = delay || 0;
+    this.t     = 0;
+  }
+
+  update() {
+    this.rot += this.rotSpd;
+
+    if (this.delay > 0) {
+      // Falling phase — drift like a petal in the wind
+      this.delay--;
+      this.swayT += this.swaySpd;
+      this.x += Math.sin(this.swayT) * this.swayAmp * 0.06 + this.driftX;
+      this.y += this.driftY;
+    } else if (this.t < 1) {
+      // Gliding toward target with smooth sine ease
+      this.t = Math.min(1, this.t + 1 / this.dur);
+      const e = easeInOutSine(this.t);
+      // Add a gentle sway arc while flying to target
+      this.swayT += this.swaySpd * 0.5;
+      const sway = Math.sin(this.swayT) * (1 - this.t) * 12;
+      this.x = this.ox + (this.tx - this.ox) * e + sway;
+      this.y = this.oy + (this.ty - this.oy) * e;
+    } else {
+      // Settled — tiny breathing float
+      this.wb += this.ws;
+      this.x = this.tx + Math.sin(this.wb) * 1.0;
+      this.y = this.ty + Math.cos(this.wb * 0.6) * 1.0;
+    }
+  }
+
+  draw() {
+    const s = this.size * 0.55;
+    hCtx.save();
+    hCtx.translate(this.x, this.y);
+    hCtx.rotate(this.rot);
+    hCtx.fillStyle = `hsl(${this.hue},100%,${62 + Math.sin(this.wb || 0)*8}%)`;
+    // Petal / heart shape
+    hCtx.beginPath();
+    hCtx.moveTo(0, s * 1.1);
+    hCtx.bezierCurveTo(-s*1.7, s*0.3,  -s, -s*1.0,  0, -s*0.3);
+    hCtx.bezierCurveTo( s,     -s*1.0,  s*1.7, s*0.3,  0,  s*1.1);
+    hCtx.closePath();
+    hCtx.fill();
+    hCtx.restore();
+  }
+}
+
+// ── Globals ──
+let heartPool = [];   // permanent heart particles
+let letterPool = [];  // per-letter particle arrays (accumulate, never cleared)
+let heartPts   = [];  // heart target positions
+let letterPts  = [];  // letter target positions [letter][pt]
+let pulseT = 0, animFrame, phase = 'idle', phaseTimer = 0, curLetter = 0;
+
+// "TE AMO" — 5 letters with a space gap between TE and AMO
+const LETTERS = ['T','E','A','M','O'];
+
+function startHeartAnimation() {
+  heartActive = true;
+  resizeHeart();
+  hCanvas.classList.add('visible');
+
+  // Fewer particles on mobile for perf
+  const isMobile = HW < 600;
+  const N = isMobile ? 220 : 320;
+
+  heartPts  = buildHeartPoints(N);
+  heartPool = heartPts.map(hp => {
+    // All start above screen — fall down like petals, then glide to heart
+    const sx = Math.random() * HW;
+    const sy = -30 - Math.random() * HH * 0.4;
+    const p  = new Particle(sx, sy);
+    const fallDelay = Math.random() * 90 | 0;         // stagger entry
+    const glideDur  = 110 + Math.random() * 60 | 0;  // slow glide to position
+    p.moveTo(hp.x, hp.y, glideDur, fallDelay);
+    return p;
+  });
+
+  letterPool = LETTERS.map(() => []);
+
+  document.fonts.ready.then(() => {
+    buildLetterTargets();
+  });
+
+  phase = 'gatherHeart';
+  phaseTimer = 0;
+  curLetter  = 0;
+  if (animFrame) cancelAnimationFrame(animFrame);
+  animateHeart();
+}
+
+function buildLetterTargets() {
+  // Measure all letters + space between TE and AMO
+  const fs  = Math.min(HW * 0.13, HH * 0.10, 80);
+  const textY = HH * 0.80;
+  const mc = document.createElement('canvas').getContext('2d');
+  mc.font = `900 ${fs}px 'Pacifico', cursive`;
+  const widths  = LETTERS.map(l => mc.measureText(l).width);
+  const letterGap = fs * 0.12;
+  // Extra space between E and A (the TE / AMO gap)
+  const wordGap   = fs * 0.45;
+  const totalW = widths.reduce((a,b)=>a+b,0)
+               + letterGap * (LETTERS.length - 1)
+               + wordGap; // extra gap for space
+  let sx = HW/2 - totalW/2;
+  letterPts = LETTERS.map((ltr, i) => {
+    const cx = sx + widths[i]/2;
+    sx += widths[i] + letterGap + (i === 1 ? wordGap : 0); // extra gap after 'E'
+    return sampleLetter(ltr, cx, textY, 5);
+  });
+}
+
+function pickHeartOrigin() {
+  // Return current position of a random heart particle — so letters fly FROM heart
+  if (!heartPool.length) return { x: HW/2, y: HH * 0.38 };
+  return heartPool[Math.random() * heartPool.length | 0];
+}
+
+function spawnLetter(lIdx) {
+  if (!letterPts[lIdx] || !letterPts[lIdx].length) return;
+  const isMobile = HW < 600;
+  const step = isMobile ? 2 : 1;
+  const targets = letterPts[lIdx].filter((_, i) => i % step === 0);
+
+  targets.forEach((t, i) => {
+    const origin = pickHeartOrigin();
+    const p = new Particle(origin.x, origin.y);
+    // Drift from heart for a bit, then slowly glide to letter position
+    // fallDelay = free drift time before homing in
+    const fallDelay = (i * 0.6 + Math.random() * 30) | 0;
+    const glideDur  = 90 + Math.random() * 50 | 0;   // slow, dreamy
+    p.moveTo(t.x, t.y, glideDur, fallDelay);
+    letterPool[lIdx].push(p);
+  });
+}
+
+function settled(pool) {
+  if (!pool.length) return false;
+  let n = 0;
+  for (const p of pool) if (p.t >= 1) n++;
+  return n / pool.length > 0.85;
+}
+
+function animateHeart() {
+  animFrame = requestAnimationFrame(animateHeart);
+  pulseT   += 0.038;
+  phaseTimer++;
+
+  hCtx.clearRect(0, 0, HW, HH);
+
+  // ── Transitions ──
+  if (phase === 'gatherHeart') {
+    if (settled(heartPool) || phaseTimer > 280) {
+      phase = 'holdHeart'; phaseTimer = 0;
+    }
+  } else if (phase === 'holdHeart') {
+    if (phaseTimer > 70) { // ~1.2s pause to admire heart
+      phase = 'letters'; phaseTimer = 0; curLetter = 0;
+      spawnLetter(0);
+    }
+  } else if (phase === 'letters') {
+    if (curLetter < LETTERS.length - 1) {
+      // Wait until current letter is mostly settled, then start next
+      if (settled(letterPool[curLetter]) || phaseTimer > (curLetter + 1) * 110) {
+        curLetter++;
+        spawnLetter(curLetter);
+      }
+    }
+    // stays in 'letters' forever — all particles remain
+  }
+
+  // ── Draw heart with heartbeat pulse ──
+  const ps = 1 + 0.04 * Math.sin(pulseT * 2.0);
+  const cx = HW/2, cy = HH * 0.38;
+  hCtx.save();
+  hCtx.translate(cx, cy);
+  hCtx.scale(ps, ps);
+  hCtx.translate(-cx, -cy);
+  for (const p of heartPool) { p.update(); p.draw(); }
+  hCtx.restore();
+
+  // ── Draw letter particles (accumulate, never cleared) ──
+  for (const pool of letterPool)
+    for (const p of pool) { p.update(); p.draw(); }
+}
+
+// ══════════════════════════════════════════
+//  YES BUTTON
+// ══════════════════════════════════════════
+const btnYes  = document.getElementById('btnYes');
+const screen1 = document.getElementById('screen1');
+
+function fireYes() {
+  if (btnYes.disabled) return;
+  btnYes.disabled = true;
+  btnNo.disabled  = true;
+  spawnBurstSparks(W/2, H/2);
+  screen1.classList.add('hidden');
+  setTimeout(() => {
+    launchConfetti();
+    startHeartAnimation();
+    setTimeout(launchConfetti, 2000);
+  }, 500);
+}
+</script>
+</body>
+</html>
